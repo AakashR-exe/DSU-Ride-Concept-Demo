@@ -1,15 +1,26 @@
-# DSU Ride – Concept Demo
+# DSU Ride
 
-Clickable prototype of the DSU Ride campus e-scooter app (find, reserve, unlock, ride, park). All data is sample data. No backend, no dependencies, no internet needed.
+DSU Ride is a responsive, installable campus e-scooter web app. Find scooters by campus location or scooter ID, view charging-point availability, and walk through the reserve, QR-unlock, ride, and park flows.
 
-## Run locally (no internet)
-- **Computer:** double-click `index.html`.
-- **Phone:** copy the folder to the phone and open `index.html` in Chrome/Safari, or serve it on your Wi-Fi: `python3 -m http.server 8000` then open `http://<your-computer-ip>:8000` on the phone.
+The app is a self-contained front-end demo: scooter locations, battery levels, reservations, wallet verification, and ride/parking actions use sample data and are simulated in the browser. It has no backend or third-party dependencies.
 
-## Host on GitHub Pages
-1. Push this folder to a repo.
-2. Settings → Pages → Deploy from branch → `main` / root.
-3. Open the Pages URL once on the phone, then use "Add to Home Screen". After that it works offline (service worker caches the files).
+## Run locally
 
-## Files
-`index.html` (the whole app) · `manifest.webmanifest` + `icon.svg` (install as app) · `sw.js` (offline cache)
+Open `index.html` in a browser, or serve this folder over HTTP:
+
+```powershell
+py -m http.server 8000
+```
+
+For offline installation and service-worker caching, use an HTTP(S) origin (opening the file directly does not enable service workers). In a supported browser, use **Install app** or **Add to Home Screen**.
+
+## Deploy with GitHub Pages
+
+In the repository settings, choose **Pages → Deploy from a branch** and select `main` with the repository root as the publishing source. Then open the `dsu-ride-demo/` subfolder in the published site. The service worker caches the app shell for offline use after the first visit.
+
+## Project files
+
+- `index.html` — responsive app UI and demo interactions
+- `manifest.webmanifest` — installable web-app metadata
+- `icon.svg` — app icon
+- `sw.js` — offline app-shell cache
