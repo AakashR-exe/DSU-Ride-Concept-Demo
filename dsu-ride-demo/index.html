@@ -2,25 +2,27 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123d2f">
-<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="icon.svg">
-<meta name="description" content="Find, reserve, and ride shared electric scooters around the DSU campus.">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="DSU Ride">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="icon" href="icon-192.png" type="image/png" sizes="192x192"><link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="description" content="Find, reserve, and ride shared electric scooters around the DSU Harohalli campus.">
 <title>DSU Ride — Campus mobility</title>
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <style>
 :root{--g:#123d2f;--g2:#0f6b4a;--a:#e8a62a;--c:#f1f6f1;--ink:#1d2b26;--mute:#6b7a73;--r:#c0504a;--p:#ecc9bc}
 *{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
 body{font-family:"Segoe UI",Roboto,system-ui,sans-serif;background:#0b2a20;color:var(--ink);display:flex;justify-content:center}
 #app{width:100%;max-width:430px;height:100%;background:var(--c);position:relative;overflow:hidden;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
-@media(min-width:600px){#app{height:min(900px,96vh);margin:auto;border-radius:28px}}
+@media(min-width:600px){#app{height:min(900px,96vh);height:min(900px,96dvh);margin:auto;border-radius:28px}}
 .top{padding:12px 14px 8px;display:flex;gap:8px;flex-direction:column}
-.search{width:100%;background:#fff;border:1px solid #e1e9e3;border-radius:12px;padding:12px 14px;font:inherit;font-size:14px;color:var(--ink);box-shadow:0 1px 4px #0002}
+.search{width:100%;background:#fff;border:1px solid #e1e9e3;border-radius:12px;padding:12px 14px;font:inherit;font-size:16px;color:var(--ink);box-shadow:0 1px 4px #0002}
 .search:focus{outline:2px solid #75a88e;outline-offset:1px}
 .tabs{display:inline-flex;background:#fff;border-radius:20px;padding:3px;align-self:flex-start;box-shadow:0 1px 4px #0002}
 .tabs button{border:0;background:none;padding:7px 16px;border-radius:17px;font-size:13px;color:var(--ink)}
 .tabs .on{background:var(--g2);color:#fff}
-.map{width:100%;flex:1;min-height:0;display:block}
 .ban{background:var(--g2);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;font-weight:600}
-.sheet{background:#fff;border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -4px 16px #0002;max-height:55%;overflow:auto}
+.sheet{background:#fff;border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -4px 16px #0002;max-height:55%;overflow:auto;position:relative;z-index:1}
 .lbl{font-size:12px;color:var(--g2);font-weight:700;margin-bottom:6px}
 .row{display:flex;gap:12px;align-items:center;padding:8px 0}
 .ico{width:42px;height:42px;border-radius:10px;background:var(--g2);color:#fff;display:grid;place-items:center;font-size:20px;flex:none}
@@ -61,15 +63,29 @@ input[type=range]{width:100%;accent-color:var(--a)}
 .brandmark{width:32px;height:32px;border-radius:10px;background:var(--g2);color:#fff;display:grid;place-items:center}
 .home-heading{display:flex;justify-content:space-between;align-items:center}
 .home-heading small{color:var(--mute);font-size:12px}
-.map-wrap{position:relative;display:flex;flex:1;min-height:0}
-.map-key{position:absolute;left:12px;top:12px;background:#fff;border-radius:10px;padding:7px 10px;font-size:11px;color:var(--mute);box-shadow:0 1px 5px #0002}
+/* Map (Leaflet + OpenStreetMap). The wrapper is its own stacking context so toasts stay above the map panes. */
+.map-wrap{position:relative;display:flex;flex:1;min-height:0;z-index:0}
+.map{flex:1;min-height:0;width:100%;background:#dfe9df;font:inherit}
+.map-off{display:grid;place-items:center;color:var(--mute);font-size:14px;padding:20px;text-align:center}
+.map-key{position:absolute;left:12px;top:12px;z-index:1000;pointer-events:none;background:#fff;border-radius:10px;padding:7px 10px;font-size:11px;color:var(--mute);box-shadow:0 1px 5px #0002;max-width:calc(100% - 80px)}
+.map-key i{display:inline-block;width:9px;height:9px;border-radius:50%;margin:0 3px 0 8px;vertical-align:-1px}.map-key i:first-child{margin-left:0}
+.pin{display:grid;place-items:center;border-radius:50%;border:3px solid #fff;font:700 10px/1 "Segoe UI",Roboto,system-ui,sans-serif;box-shadow:0 2px 6px #0005}
+.pin.sc{background:var(--g2);color:#fff}
+.pin.sc.on{border-color:var(--a);font-size:11px}
+.pin.cp{background:var(--a);color:#1d1400;font-size:12px}
+.pin.cp.full{background:#d9cbb8;color:var(--r)}
+.me-dot{border-radius:50%;background:#2b6bff;border:2.5px solid #fff;box-shadow:0 0 0 9px #2b6bff33}
+.recenter{display:grid;place-items:center;padding:0;width:34px;height:34px;border:2px solid #0003;border-radius:4px;background:#fff;background-clip:padding-box;font-size:18px;line-height:1;color:var(--ink)}
+.recenter:hover{background-color:#f4f4f4}
+.leaflet-container a.leaflet-popup-close-button{display:none}
+#app[data-page="home"] .sheet{max-height:46%}
 .empty{padding:20px 4px;color:var(--mute);font-size:14px;line-height:1.5}
 .empty b{display:block;color:var(--ink);margin-bottom:4px}
 button{font-family:inherit;cursor:pointer}
-.btn:focus-visible,.lnk:focus-visible,.tabs button:focus-visible,.row[onclick]:focus-visible{outline:3px solid #e8a62a;outline-offset:2px}
+.btn:focus-visible,.lnk:focus-visible,.tabs button:focus-visible,.row[onclick]:focus-visible,.leaflet-marker-icon:focus-visible,.recenter:focus-visible{outline:3px solid #e8a62a;outline-offset:2px}
 @media(min-width:760px){
  body{padding:20px;background:radial-gradient(ellipse at 50% 0%,#1d5942,#0b2a20 72%)}
- #app{max-width:1180px;width:100%;height:min(900px,calc(100vh - 40px));min-height:620px;border-radius:24px;box-shadow:0 24px 80px #0005}
+ #app{max-width:1180px;width:100%;height:min(900px,calc(100vh - 40px));height:min(900px,calc(100dvh - 40px));border-radius:24px;box-shadow:0 24px 80px #0005}
  #app:not([data-page="home"]){max-width:520px}
  #app[data-page="home"]{display:grid;grid-template-columns:minmax(0,1fr) 370px;grid-template-rows:auto minmax(0,1fr);padding-top:0}
  #app[data-page="home"] .top{grid-column:1/-1;flex-direction:row;align-items:center;gap:22px;padding:18px 24px;border-bottom:1px solid #e2eae4}
@@ -77,9 +93,12 @@ button{font-family:inherit;cursor:pointer}
  #app[data-page="home"] .search{max-width:430px}
  #app[data-page="home"] .tabs{margin-left:auto}
  #app[data-page="home"] .map-wrap{grid-column:1;grid-row:2;min-height:0}
+ #app[data-page="home"] .map{border-radius:0 0 0 24px}
  #app[data-page="home"] .sheet{grid-column:2;grid-row:2;border-radius:0 0 24px 0;padding:24px 22px;max-height:none;box-shadow:-5px 0 16px #0000000a}
  #app[data-page="home"] .map-key{left:20px;top:20px}
 }
+/* Landscape phones and short windows: use the whole screen */
+@media(min-width:760px) and (max-height:620px){body{padding:0}#app{height:100%;border-radius:0;box-shadow:none}#app[data-page="home"] .map{border-radius:0}}
 @media(max-width:759px){
  .home-heading small{display:none}
  .map-key{top:8px;left:10px}
@@ -87,38 +106,67 @@ button{font-family:inherit;cursor:pointer}
 @keyframes pulse{50%{opacity:.35}}.blink{animation:pulse .5s 4}
 @media(prefers-reduced-motion:reduce){.blink{animation:none}}
 </style></head><body><div id="app"></div>
+<script src="vendor/leaflet/leaflet.js"></script>
 <script>
 const $=s=>document.querySelector(s);
-const ME={x:180,y:200};
-// Charging points double as scooter bays (sample values from the proposal)
+// Real campus geometry: Dayananda Sagar University, Harohalli (OSM way 1107054018).
+// Coordinates and building names © OpenStreetMap contributors (ODbL).
+const CAMPUS=[[12.662594,77.455974],[12.662563,77.456762],[12.660024,77.45658],[12.660144,77.455373],[12.658114,77.455094],[12.658281,77.45415],[12.658888,77.452744],[12.658019,77.452476],[12.658057,77.451517],[12.656491,77.451484],[12.656407,77.449949],[12.657418,77.449676],[12.657507,77.450303],[12.657706,77.450652],[12.658187,77.449783],[12.658396,77.448367],[12.657706,77.447948],[12.657234,77.447315],[12.657281,77.447272],[12.657678,77.446902],[12.658087,77.446492],[12.659056,77.44562],[12.660728,77.447762],[12.662116,77.449541],[12.663452,77.451253],[12.662678,77.451875],[12.660961,77.452725],[12.660192,77.452889],[12.660631,77.453924],[12.662086,77.454166]];
+const ME=[12.661641,77.450018]; // "You are here" — simulated rider position at Campus Yard
+// Charging points double as scooter bays. Placed at real campus buildings; port counts are sample data.
 const CP=[
- {id:'P',n:'P Block',bx:20,by:20,bw:120,bh:75,f:3,t:4,s:'Open · Fast charge'},
- {id:'F',n:'F Block',bx:220,by:20,bw:120,bh:75,f:1,t:2,s:'Limited bay'},
- {id:'HC',n:'Hostel Canteen',bx:20,by:135,bw:120,bh:55,f:4,t:4,s:'Open'},
- {id:'R',n:'Residency',bx:220,by:135,bw:120,bh:55,f:2,t:4,s:'Open'},
- {id:'H',n:'Hostel',bx:20,by:200,bw:120,bh:70,f:0,t:4,s:'Full · next free ~18 min'},
- {id:'S',n:'Security office',bx:220,by:200,bw:120,bh:60,f:2,t:2,s:'Open · nearest office'}
-].map(c=>({...c,x:c.bx+c.bw/2,y:c.by+c.bh/2-8}));
-let SC=[{id:'DSU-014',b:92,at:'HC',st:'ok'},{id:'DSU-022',b:64,at:'P',st:'ok'},{id:'DSU-031',b:71,at:'F',st:'ok'},{id:'DSU-007',b:86,at:'R',st:'ok'},{id:'DSU-019',b:58,at:'S',st:'ok'}];
+ {id:'SOE',n:'School of Engineering',ll:[12.661816,77.450620],f:3,t:4,s:'Open · Fast charge'},
+ {id:'ME',n:'Mechanical Engg. Block',ll:[12.662189,77.451884],f:1,t:2,s:'Limited bay'},
+ {id:'G1',n:'Gate 1 security',ll:[12.663025,77.450900],f:2,t:2,s:'Open · next to security'},
+ {id:'CD',n:'CDSIMER hospital',ll:[12.660569,77.449287],f:2,t:3,s:'Open · near emergency reception'},
+ {id:'TT',n:'Tummy Trails food court',ll:[12.660309,77.452679],f:4,t:4,s:'Open'},
+ {id:'AR',n:'DSU Arena & courts',ll:[12.659638,77.453289],f:3,t:4,s:'Open · near sports courts'},
+ {id:'GH',n:'Girls Hostel',ll:[12.658886,77.448748],f:0,t:4,s:'Full · next free ~18 min'},
+ {id:'SR',n:'S Residency boys hostel',ll:[12.658323,77.447983],f:2,t:4,s:'Open'}
+];
+let SC=[{id:'DSU-014',b:92,at:'TT',st:'ok'},{id:'DSU-022',b:64,at:'SOE',st:'ok'},{id:'DSU-031',b:71,at:'ME',st:'ok'},{id:'DSU-007',b:86,at:'SR',st:'ok'},{id:'DSU-019',b:58,at:'G1',st:'ok'},{id:'DSU-026',b:77,at:'AR',st:'ok'},{id:'DSU-011',b:45,at:'CD',st:'ok'}];
 const ZONES=[{n:'Main drive',cap:15},{n:'Pedestrian gate',cap:8},{n:'Courtyard / dining',cap:0}];
-const S={tab:'s',sel:null,ph:'home',left:600,scan:0,thr:12,zone:0,t:0,d:0,sid:null,park:null,fm:0,toast:'',query:''};
+const S={tab:'s',sel:null,ph:'home',left:600,scan:0,thr:12,zone:0,t:0,d:0,sid:null,park:null,fm:0,toast:'',query:'',nav:null};
 const cp=id=>CP.find(c=>c.id==id), sc=id=>SC.find(s=>s.id==id);
-const dist=p=>Math.round(Math.hypot(p.x-ME.x,p.y-ME.y)*1.15), walk=m=>Math.max(1,Math.ceil(m/80));
+// Great-circle distance in metres; walking estimate adds 25% for paths not being straight lines.
+const hav=(a,b)=>{const r=Math.PI/180,p=(b[0]-a[0])*r,l=(b[1]-a[1])*r,h=Math.sin(p/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(l/2)**2;return 2*6371e3*Math.asin(Math.sqrt(h))};
+const dist=p=>Math.max(10,Math.round(hav(ME,p.ll)*1.25/10)*10), walk=m=>Math.max(1,Math.ceil(m/80));
 const avail=()=>SC.filter(s=>s.st=='ok'&&s.b>=20).map(s=>({...s,m:dist(cp(s.at))})).sort((a,b)=>a.m-b.m);
 const matches=(...values)=>!S.query.trim()||values.some(v=>String(v).toLowerCase().includes(S.query.trim().toLowerCase()));
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const mmss=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');
 function toast(m){S.toast=m;render();clearTimeout(toast.t);toast.t=setTimeout(()=>{S.toast='';render()},2400)}
 
-function map(mode,target){
- let h='<svg viewBox="0 0 360 300" class="map" preserveAspectRatio="xMidYMid meet"><rect width="360" height="300" fill="#dfe9df"/><rect x="140" width="80" height="300" fill="#fff" opacity=".75"/><rect y="95" width="360" height="40" fill="#fff" opacity=".75"/>';
- CP.forEach(c=>h+=`<rect x="${c.bx}" y="${c.by}" width="${c.bw}" height="${c.bh}" rx="8" fill="#f4f7f2"/><text x="${c.bx+c.bw/2}" y="${c.by+c.bh-8}" text-anchor="middle" font-size="11" fill="#667">${c.n}</text>`);
- if(target){const t=cp(target),p=t.y>115?[[ME.x,ME.y],[180,t.y],[t.x,t.y]]:[[ME.x,ME.y],[180,115],[t.x,115],[t.x,t.y]];
-  h+=`<polyline points="${p.map(q=>q.join(',')).join(' ')}" fill="none" stroke="#2b6bff" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/>`}
- if(mode=='s')avail().filter(s=>matches(s.id,cp(s.at).n)).forEach(s=>{const c=cp(s.at),on=s.id==S.sel;h+=`<g onclick="pick('${s.id}')" style="cursor:pointer"><circle cx="${c.x}" cy="${c.y}" r="${on?17:14}" fill="#0f6b4a" stroke="${on?'#e8a62a':'#fff'}" stroke-width="3"/><text x="${c.x}" y="${c.y+4}" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">${s.b}%</text></g>`});
- if(mode=='c')CP.filter(c=>matches(c.n)).forEach(c=>h+=`<g onclick="toast('${c.n}: ${c.f} of ${c.t} ports free')"><circle cx="${c.x}" cy="${c.y}" r="15" fill="#e8a62a" stroke="#fff" stroke-width="3"/><text x="${c.x}" y="${c.y+4}" text-anchor="middle" font-size="11" font-weight="700" fill="#1d1400">${c.f}</text></g>`);
- if(mode=='r'&&target){const c=cp(target);h+=`<g id="mk"><circle cx="${c.x}" cy="${c.y}" r="16" fill="#0f6b4a" stroke="#fff" stroke-width="3"/><text x="${c.x}" y="${c.y+4}" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">${sc(S.sid).b}%</text></g>`}
- return h+`<circle cx="${ME.x}" cy="${ME.y}" r="14" fill="#2b6bff" opacity=".2"/><circle cx="${ME.x}" cy="${ME.y}" r="6" fill="#2b6bff" stroke="#fff" stroke-width="2.5"/></svg>`}
+// ---- Leaflet map: created once, then moved into each screen's #map-slot so tiles and zoom survive re-renders.
+let MAP=null,mapEl=null,LAY=null,lastFit='';
+function initMap(){
+ const campus=L.latLngBounds(CAMPUS);
+ MAP=L.map(mapEl,{zoomControl:false,zoomSnap:0.25,minZoom:15,maxZoom:19,maxBounds:campus.pad(0.8),maxBoundsViscosity:0.9});
+ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(MAP);
+ L.control.zoom({position:'topright'}).addTo(MAP);
+ const Fit=L.Control.extend({onAdd(){const b=L.DomUtil.create('button','recenter');b.type='button';b.innerHTML='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg>';b.title='Show whole campus';b.setAttribute('aria-label','Show whole campus');
+  L.DomEvent.disableClickPropagation(b);L.DomEvent.on(b,'click',()=>MAP.fitBounds(campus,{padding:[12,12]}));return b}});
+ new Fit({position:'topright'}).addTo(MAP);
+ L.polygon(CAMPUS,{color:'#0f6b4a',weight:2,dashArray:'6 6',fillColor:'#0f6b4a',fillOpacity:.06,interactive:false}).addTo(MAP);
+ L.marker(ME,{icon:L.divIcon({className:'me-dot',iconSize:[16,16]}),keyboard:false,zIndexOffset:2000}).bindTooltip('You are here (demo location)',{direction:'top',offset:[0,-10]}).addTo(MAP);
+ LAY=L.layerGroup().addTo(MAP);
+}
+function mountMap(mode,target){
+ const slot=$('#map-slot');if(!slot)return;
+ if(!window.L){slot.insertAdjacentHTML('afterbegin','<div class="map map-off">Map unavailable — reconnect to load the campus map.</div>');return}
+ if(!mapEl){mapEl=document.createElement('div');mapEl.className='map';mapEl.setAttribute('aria-label','Map of the DSU Harohalli campus')}
+ slot.prepend(mapEl);
+ if(!MAP)initMap();else MAP.invalidateSize({pan:false});
+ const key=target?mode+':'+target:'campus';
+ if(key!=lastFit){lastFit=key;target?MAP.fitBounds(L.latLngBounds([ME,cp(target).ll]),{padding:[60,60],maxZoom:18}):MAP.fitBounds(L.latLngBounds(CAMPUS),{padding:[12,12]})}
+ LAY.clearLayers();
+ if(target)L.polyline([ME,cp(target).ll],{color:'#2b6bff',weight:4,dashArray:'2 9',lineCap:'round',interactive:false}).addTo(LAY);
+ const pin=(ll,cls,html,n,title,dx=0)=>L.marker(ll,{title,riseOnHover:true,icon:L.divIcon({className:'pin '+cls,html:String(html),iconSize:[n,n],iconAnchor:[n/2-dx,n/2]})}).addTo(LAY);
+ if(mode=='s'){const seen={};avail().filter(s=>matches(s.id,cp(s.at).n)).forEach(s=>{const i=seen[s.at]=(seen[s.at]||0)+1,on=s.id==S.sel;
+  pin(cp(s.at).ll,'sc'+(on?' on':''),s.b+'%',on?36:30,`${s.id} · ${s.b}% · ${cp(s.at).n}`,(i-1)*26).setZIndexOffset(on?1000:0).on('click',()=>pick(s.id))})}
+ if(mode=='c')CP.filter(c=>matches(c.n)).forEach(c=>pin(c.ll,'cp'+(c.f?'':' full'),c.f,30,`${c.n} · ${c.f} of ${c.t} ports free`).on('click',()=>toast(`${c.n}: ${c.f} of ${c.t} ports free`)));
+ if(mode=='r'&&target)pin(cp(target).ll,'sc on mk',Math.round(sc(S.sid).b)+'%',36,S.sid);
+}
 
 function stepper(n){return`<div class="steps">${['Reserved','Scan QR','Ride','Park & lock'].map((x,i)=>`<div class="${i<n?'d':''}"><span>${i<n?'✓':i+1}</span>${x}</div>`).join('')}</div>`}
 
@@ -131,17 +179,17 @@ function home(){
   <div class="row"><div class="ico">⚡</div><div class="grow"><b>${cur.id}</b><span class="sm">${cur.b}% · ${cur.m} m · ${walk(cur.m)} min walk · ${cp(cur.at).n}</span></div></div>
   <div class="bar"><i style="width:${cur.b}%"></i></div>
   <button class="btn" onclick="reserve('${cur.id}')">Reserve for 10 min</button>
-  <div class="note">${A.length} scooters near you · free hold, cancel any time</div>
+  <div class="note">${A.length} scooters on campus · free hold, cancel any time</div>
   ${A.filter(a=>a.id!=cur.id).slice(0,3).map(a=>`<div class="row" role="button" tabindex="0" onclick="pick('${a.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pick('${a.id}')}"><div class="grow"><b style="font-size:15px">${a.id}</b><span class="sm">${cp(a.at).n} · ${a.m} m · ${walk(a.m)} min</span></div><span class="pill">${a.b}%</span></div>`).join('')}`
   :`<div class="empty"><b>${S.query?'No scooters match your search':'No scooters free nearby'}</b>${S.query?'Try a scooter ID or campus location.':'Every scooter is out or charging. Check the Charging tab for available docks.'}</div>`;
  }else{
   const points=CP.filter(c=>matches(c.n)).map(c=>({...c,m:dist(c)})).sort((a,b)=>a.m-b.m),N=points.find(c=>c.f>0);
-  sheet=`<div class="lbl">Charging points nearby</div>`+(points.length?points.map(c=>`<div class="row"><div class="ico am">⚡</div><div class="grow"><b style="font-size:15px">${c.n}</b><span class="sm">${c.m} m · ${c.s}</span></div><span class="pill ${c.f==0?'f':c.f==1?'l':''}">${c.f==0?'Full':c.f+' free'}</span></div>`).join(''):`<div class="empty"><b>No charging points match your search</b>Try a campus building name.</div>`)+(N?`<button class="btn am" onclick="toast('Navigating to ${N.n} (demo)')">Navigate to ${N.n}</button>`:'')}
- return`<div class="top"><div class="home-heading"><div class="brand"><span class="brandmark">⚡</span>DSU Ride</div><small>Campus mobility, made simple</small></div><input id="campus-search" class="search" type="search" aria-label="Search scooters or campus locations" placeholder="Search scooter ID or campus location" autocomplete="off" value="${esc(S.query)}" oninput="S.query=this.value;render()"><div class="tabs" role="tablist" aria-label="Map view"><button type="button" role="tab" aria-selected="${S.tab=='s'}" class="${S.tab=='s'?'on':''}" onclick="S.tab='s';render()">Scooters</button><button type="button" role="tab" aria-selected="${S.tab=='c'}" class="${S.tab=='c'?'on':''}" onclick="S.tab='c';render()">Charging</button></div></div>
- <div class="map-wrap">${map(S.tab,null)}<div class="map-key">${S.tab=='s'?'● Available scooter · battery %':'● Charging ports available'}</div></div><div class="sheet">${sheet}</div>`}
+  sheet=`<div class="lbl">Charging points on campus</div>`+(points.length?points.map(c=>`<div class="row"><div class="ico am">⚡</div><div class="grow"><b style="font-size:15px">${c.n}</b><span class="sm">${c.m} m · ${c.s}</span></div><span class="pill ${c.f==0?'f':c.f==1?'l':''}">${c.f==0?'Full':c.f+' free'}</span></div>`).join(''):`<div class="empty"><b>No charging points match your search</b>Try a campus building name.</div>`)+(N?`<button class="btn am" onclick="navTo('${N.id}')">Navigate to ${N.n}</button>`:'')}
+ return`<div class="top"><div class="home-heading"><div class="brand"><span class="brandmark">⚡</span>DSU Ride</div><small>Harohalli campus mobility</small></div><input id="campus-search" class="search" type="search" aria-label="Search scooters or campus locations" placeholder="Search scooter ID or campus location" autocomplete="off" value="${esc(S.query)}" oninput="S.query=this.value;render()"><div class="tabs" role="tablist" aria-label="Map view"><button type="button" role="tab" aria-selected="${S.tab=='s'}" class="${S.tab=='s'?'on':''}" onclick="S.tab='s';S.nav=null;render()">Scooters</button><button type="button" role="tab" aria-selected="${S.tab=='c'}" class="${S.tab=='c'?'on':''}" onclick="S.tab='c';S.nav=null;render()">Charging</button></div></div>
+ <div class="map-wrap" id="map-slot"><div class="map-key">${S.tab=='s'?'<i style="background:#0f6b4a"></i>Scooter · battery %<i style="background:#2b6bff"></i>You':'<i style="background:#e8a62a"></i>Free charging ports<i style="background:#2b6bff"></i>You'}</div></div><div class="sheet">${sheet}</div>`}
 
 function res(){const s=sc(S.sid),c=cp(s.at),m=dist(c);
- return`<div class="ban"><span>⚡ ${s.id} reserved</span><span id="tm">${mmss(S.left)}</span></div>${map('r',s.at)}
+ return`<div class="ban"><span>⚡ ${s.id} reserved</span><span id="tm">${mmss(S.left)}</span></div><div class="map-wrap" id="map-slot"><div class="map-key">Walk about ${m} m to ${c.n}</div></div>
  <div class="sheet"><div class="row"><div class="grow"><b>${s.id}</b><span class="sm">${Math.round(s.b)}% · ${c.n} rack</span></div><span class="pill">Walk ${walk(m)} min</span></div>
  ${stepper(1)}<button class="btn" onclick="S.ph='scan';S.scan=0;render()">Scan QR to unlock</button>
  <button class="lnk" onclick="chirp()">🔊 Chirp &amp; flash light to find it</button>
@@ -161,12 +209,12 @@ function scan(){const s=sc(S.sid);
  ${S.scan==0?`<button class="btn" onclick="doScan()">Simulate scan</button>`:S.scan==1?`<button class="btn" disabled>Verifying wallet…</button>`:`<button class="btn" onclick="start()">Unlock &amp; start ride</button>`}
  <button class="lnk" onclick="S.ph='res';render()">Back</button></div></div>`}
 
-function ride(){const z=ZONES[S.zone];
+function ride(){
  return`<div class="full dark"><div class="ban"><span>Riding ${S.sid}</span><span id="rb">${Math.round(sc(S.sid).b)}% 🔋</span></div>
  <div class="speed"><b id="sp">0</b><div class="sm" style="color:#fffa">km/h</div><div style="margin-top:10px"><span class="cap" id="cap"></span></div></div>
  <div class="zones">${ZONES.map((x,i)=>`<button class="${i==S.zone?'on':''}" onclick="S.zone=${i};render()">${x.n}</button>`).join('')}</div>
  <p class="note" style="color:#fffb;padding:10px 20px" id="msg"></p>
- <div style="padding:0 20px"><div class="sm" style="color:#fffa">Throttle (simulated)</div><input type="range" min="0" max="25" value="${S.thr}" oninput="S.thr=+this.value;upd()"></div>
+ <div style="padding:0 20px"><div class="sm" style="color:#fffa">Throttle (simulated)</div><input type="range" min="0" max="25" value="${S.thr}" aria-label="Throttle" oninput="S.thr=+this.value;upd()"></div>
  <div class="stats"><div><b id="tt">${mmss(S.t)}</b><small>time</small></div><div><b id="dd">${Math.round(S.d)} m</b><small>distance</small></div></div>
  <div style="flex:1"></div><div class="sheet" style="color:var(--ink)">
  ${S.fm?`<div class="lbl">Report a fault</div>${['Brake wear','Loose handlebar','Flat tire'].map(f=>`<button class="btn" style="background:#eef2ee;color:var(--ink)" onclick="fault('${f}')">${f}</button>`).join('')}<button class="lnk" onclick="S.fm=0;render()">Cancel</button>`
@@ -174,7 +222,7 @@ function ride(){const z=ZONES[S.zone];
 
 function park(){const open=CP.filter(c=>c.f>0).map(c=>({...c,m:dist(c)})).sort((a,b)=>a.m-b.m);
  return`<div class="top"><div class="search"><b>Park at a charging point</b></div></div><div class="full"><div style="padding:0 14px">
- ${open.map(c=>`<div class="row ${S.park==c.id?'sel':''}" style="padding:12px" onclick="S.park='${c.id}';render()"><div class="ico am">⚡</div><div class="grow"><b style="font-size:15px">${c.n}</b><span class="sm">${c.f} of ${c.t} ports free</span></div></div>`).join('')}</div></div>
+ ${open.map(c=>`<div class="row ${S.park==c.id?'sel':''}" role="button" tabindex="0" style="padding:12px" onclick="S.park='${c.id}';render()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();S.park='${c.id}';render()}"><div class="ico am">⚡</div><div class="grow"><b style="font-size:15px">${c.n}</b><span class="sm">${c.f} of ${c.t} ports free</span></div></div>`).join('')}</div></div>
  <div class="sheet">${stepper(3)}<button class="btn" ${S.park?'':'disabled'} onclick="finish()">Lock &amp; snap photo to end trip</button><button class="lnk" onclick="S.ph='ride';render()">Back to ride</button></div>`}
 
 function doneScr(){const avg=S.t?(S.d/S.t*3.6):0;
@@ -186,8 +234,11 @@ function doneScr(){const avg=S.t?(S.d/S.t*3.6):0;
 function render(){
  const searchFocused=document.activeElement&&document.activeElement.id=='campus-search',selection=searchFocused?document.activeElement.selectionStart:null;
  const v={home,res,scan,ride,park,done:doneScr}[S.ph]();
+ if(mapEl)mapEl.remove();
  $('#app').dataset.page=S.ph;
  $('#app').innerHTML=(S.toast?`<div class="toast" role="status">${S.toast}</div>`:'')+v;
+ if(S.ph=='home')mountMap(S.tab,S.tab=='c'?S.nav:null);
+ if(S.ph=='res')mountMap('r',sc(S.sid).at);
  if(searchFocused){const input=$('#campus-search');if(input){input.focus();input.setSelectionRange(selection,selection)}}
  if(S.ph=='ride')upd();
 }
@@ -195,9 +246,10 @@ function upd(){const z=ZONES[S.zone],sp=Math.min(S.thr,z.cap);
  $('#sp').textContent=sp;$('#cap').textContent=z.cap?`Speed cap ${z.cap} km/h`:'Restricted zone';
  $('#msg').textContent=z.cap==0?'Motor power cut in courtyards, dining halls and indoor sports areas. Walk the scooter.':S.thr>z.cap?`Geofence limits you to ${z.cap} km/h here.`:'Helmet on, eyes up. Slow down at gates.'}
 function pick(id){S.sel=id;render()}
+function navTo(id){S.nav=id;render();toast('Walking route to '+cp(id).n+' (demo)')}
 function reserve(id){const s=sc(id);s.st='res';S.sid=id;S.ph='res';S.left=600;render()}
 function cancel(){sc(S.sid).st='ok';S.ph='home';S.sel=S.sid;render()}
-function chirp(){toast('🔊 Chirp! Beacon light is blinking on '+S.sid);const m=$('#mk');if(m)m.classList.add('blink')}
+function chirp(){toast('🔊 Chirp! Beacon light is blinking on '+S.sid);const m=$('.mk');if(m)m.classList.add('blink')}
 function doScan(){S.scan=1;render();setTimeout(()=>{if(S.ph=='scan'){S.scan=2;render()}},1100)}
 function start(){const s=sc(S.sid),c=cp(s.at);s.st='ride';c.f=Math.min(c.t,c.f+1);S.ph='ride';S.t=0;S.d=0;S.zone=0;S.thr=12;S.fm=0;render();toast('🪖 Wear your helmet. Ride safe.')}
 function fault(f){const s=sc(S.sid);s.st='fault';S.ph='home';S.fm=0;S.sel=null;render();toast(f+' reported. Scooter locked for technician triage.')}
