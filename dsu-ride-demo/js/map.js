@@ -2,6 +2,7 @@
 // its element into the current screen's #map-slot and redraws pins from a plain "scene" object
 // (see mapScene in views.js), so tiles and zoom survive re-renders.
 import { escapeHtml } from './html.js';
+import { fetchRoadRoute } from './routing.js';
 
 const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
@@ -10,7 +11,7 @@ const ICON_FIT =
 const ICON_LOCATE =
   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg>';
 
-export function createCampusMap({ boundary, onAction, onLocate }) {
+export function createCampusMap({ boundary, onAction, onLocate, onRouteError }) {
   const L = window.L;
   let map = null;
   let el = null;
@@ -18,6 +19,10 @@ export function createCampusMap({ boundary, onAction, onLocate }) {
   let pinLayer = null;
   let youMarker = null;
   let lastFitKey = null;
+  let routeKey = null;
+  let routePoints = null;
+  let routeController = null;
+  let routeRequestId = 0;
   const markers = new Map();
 
   const campusBounds = () => L.latLngBounds(boundary);
@@ -75,9 +80,7 @@ export function createCampusMap({ boundary, onAction, onLocate }) {
       youMarker.remove();
     }
 
-    if (scene.route) {
-      L.polyline(scene.route, { color: '#2b6bff', weight: 4, dashArray: '2 9', lineCap: 'round', interactive: false }).addTo(routeLayer);
-    }
+    drawRoute(scene.route);
 
     for (const pin of scene.pins) {
       const size = pin.selected ? 36 : 30;
@@ -95,6 +98,51 @@ export function createCampusMap({ boundary, onAction, onLocate }) {
       marker.addTo(pinLayer);
       markers.set(pin.id, marker);
     }
+  }
+
+  function showRoute(points) {
+    L.polyline(points, { color: '#fff', weight: 9, opacity: 0.9, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(routeLayer);
+    L.polyline(points, { color: '#2b6bff', weight: 5, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(routeLayer);
+  }
+
+  function drawRoute(endpoints) {
+    if (!endpoints) {
+      if (routeKey !== null) {
+        routeRequestId += 1;
+        routeController?.abort();
+        routeController = null;
+        routeKey = null;
+        routePoints = null;
+      }
+      return;
+    }
+
+    const nextKey = JSON.stringify(endpoints);
+    if (nextKey === routeKey) {
+      if (routePoints) showRoute(routePoints);
+      return;
+    }
+
+    routeRequestId += 1;
+    const requestId = routeRequestId;
+    routeController?.abort();
+    routeController = new AbortController();
+    routeKey = nextKey;
+    routePoints = null;
+
+    fetchRoadRoute(endpoints[0], endpoints[1], { signal: routeController.signal })
+      .then((points) => {
+        if (requestId !== routeRequestId) return;
+        routePoints = points;
+        showRoute(points);
+        map.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 18 });
+      })
+      .catch((error) => {
+        if (requestId === routeRequestId && error.name !== 'AbortError') onRouteError?.(error);
+      })
+      .finally(() => {
+        if (requestId === routeRequestId) routeController = null;
+      });
   }
 
   return {

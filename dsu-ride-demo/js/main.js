@@ -17,7 +17,12 @@ const storage = (() => {
 })();
 
 const state = loadState(storage);
-const campusMap = createCampusMap({ boundary: CAMPUS_BOUNDARY, onAction: dispatch, onLocate: locate });
+const campusMap = createCampusMap({
+  boundary: CAMPUS_BOUNDARY,
+  onAction: dispatch,
+  onLocate: locate,
+  onRouteError: () => showToast("Couldn't load a road route. Check your connection and try again."),
+});
 let renderedScreen = null;
 
 // Actions that only change values shown live (no full re-render, so a dragged slider keeps its grip).

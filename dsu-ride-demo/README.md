@@ -4,7 +4,7 @@ DSU Ride is an installable campus e-scooter web app for the Dayananda Sagar Univ
 
 **Live app:** https://aakashr-exe.github.io/DSU-Ride-Concept-Demo/
 
-It's a front-end demo with no backend and no database. The campus map is real (Leaflet + OpenStreetMap). Scooters, batteries, port counts, wallet checks and rides are simulated in the browser. Demo progress is saved in the browser's local storage, so a refresh doesn't lose a reservation or ride. **Reset demo data** at the bottom of the home screen restores the starting state, which is handy before a presentation.
+It's a front-end demo with no backend and no database. The campus map is real (Leaflet + OpenStreetMap), and road routes to scooters and charging points are requested from the public OSRM routing service. Route requests send the start and destination coordinates to that service; routes need an internet connection. Scooters, batteries, port counts, wallet checks and rides are simulated in the browser. Demo progress is saved in the browser's local storage, so a refresh doesn't lose a reservation or ride. **Reset demo data** at the bottom of the home screen restores the starting state, which is handy before a presentation.
 
 ## Open it on any device
 
@@ -51,6 +51,7 @@ The app uses JavaScript modules, so open it through a server (as above), not str
 | `js/map.js` | The single Leaflet map, moved between screens and redrawn from a scene |
 | `js/html.js` | `html` template tag that escapes everything interpolated |
 | `js/geo.js` | Distances, walking estimates, point-in-campus test, formatting |
+| `js/routing.js` | Road route requests to OSRM |
 | `js/main.js` | Wiring: renders, routes `data-action` clicks to actions, runs the clock, GPS |
 | `sw.js` | Offline cache, network-first so new deploys appear immediately |
 
@@ -64,4 +65,4 @@ When you add a file under `js/` or `css/`, add it to `SHELL` in `sw.js` and bump
 
 ## Credits
 
-Map data © OpenStreetMap contributors (ODbL). Leaflet 1.9.4 (BSD-2-Clause) is bundled in `vendor/leaflet/`.
+Map and route data © OpenStreetMap contributors (ODbL). Routes are provided by the OSRM demo server. Leaflet 1.9.4 (BSD-2-Clause) is bundled in `vendor/leaflet/`.

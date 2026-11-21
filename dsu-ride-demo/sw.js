@@ -2,7 +2,7 @@
 // you're online) and falls back to the cache when offline. Map tiles are cross-origin and are left
 // to the browser's own HTTP cache, per the OpenStreetMap tile usage policy.
 // tests/sw.test.mjs checks that SHELL lists every app file; bump CACHE when the list changes.
-const CACHE = 'dsu-ride-v4';
+const CACHE = 'dsu-ride-v5';
 const SHELL = [
   './',
   'index.html',
@@ -15,6 +15,7 @@ const SHELL = [
   'js/main.js',
   'js/map.js',
   'js/qr.js',
+  'js/routing.js',
   'js/selectors.js',
   'js/state.js',
   'js/views.js',

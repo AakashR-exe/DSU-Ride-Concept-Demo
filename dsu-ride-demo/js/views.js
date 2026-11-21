@@ -63,7 +63,7 @@ function home(state) {
 <div class="map-wrap" id="map-slot">${mapKey(onScooters ? [['scooter', 'Scooter · battery %']] : [['dock', 'Free charging ports']], state.you)}</div>
 <section class="sheet" aria-label="${onScooters ? 'Scooters' : 'Charging points'}">
   ${onScooters ? scooterSheet(state) : dockSheet(state)}
-  <p class="note dist-note">Distances from ${gps ? 'your location' : `${DEMO_LOCATION.label} (demo location)`}.</p>
+  <p class="note dist-note">Distances from ${gps ? 'your location' : `${DEMO_LOCATION.label} (demo location)`}. Road routes use OSRM and share these coordinates with its public routing service.</p>
   <button type="button" class="lnk subtle" data-action="resetDemo">Reset demo data</button>
 </section>`;
 }
@@ -269,7 +269,7 @@ export function mapScene(state) {
           action: 'select',
           arg: s.id,
         }));
-        return { fitKey: 'campus', you, route: current ? [you.at, current.dock.at] : null, pins: stack(pins) };
+        return { fitKey: current ? `scooter:${current.id}` : 'campus', you, route: current ? [you.at, current.dock.at] : null, pins: stack(pins) };
       }
       const nav = state.navDockId ? dockById(state, state.navDockId) : null;
       return {

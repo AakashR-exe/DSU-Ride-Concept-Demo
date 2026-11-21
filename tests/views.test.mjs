@@ -71,10 +71,12 @@ test('live values follow the clock', () => {
 test('map scenes: pins, routes and when to refit', () => {
   const state = createInitialState();
   const home = mapScene(state);
-  assert.equal(home.fitKey, 'campus');
+  assert.equal(home.fitKey, 'scooter:DSU-022');
   assert.equal(home.pins.length, 7);
   assert.equal(home.pins.filter((p) => p.selected).length, 1);
   assert.ok(home.route, 'route to the selected scooter');
+  actions.select(state, 'DSU-019');
+  assert.equal(mapScene(state).fitKey, 'scooter:DSU-019', 'selecting another scooter refits the route');
 
   actions.setTab(state, 'charging');
   assert.equal(mapScene(state).pins.length, 8);
