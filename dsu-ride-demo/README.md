@@ -14,7 +14,19 @@ Open the live link in any modern browser. To install it like an app:
 - **iPhone / iPad (Safari):** Share → **Add to Home Screen**
 - **Desktop Chrome / Edge:** the install icon in the address bar
 
-After the first visit the app works offline, but map tiles need a connection. On campus, the **Use my location** button (crosshair on the map) measures distances from where you are. Elsewhere it falls back to a demo location at Campus Yard.
+After the first visit the app works offline, but map tiles need a connection.
+
+### Live location
+
+On campus, tap the crosshair button on the map to track your position live with GPS. While it's on:
+
+- A pulsing blue dot shows where you are, with a ring for GPS accuracy, and the map follows you (the button turns solid blue).
+- Distances, walking times and the road route update as you walk. A route is re-requested only after you've moved about 40 m, at most every 10 s.
+- Drag the map to look around. Tracking continues, but the map stops following (the crosshair turns blue). Tap it to re-centre, and tap again to switch live location off.
+- The parking screen shows you too and lists docks by distance.
+- It turns itself off if you leave campus, and it resumes after a reload if location permission is still granted.
+
+Off campus, or with location off, distances are measured from a demo location at Campus Yard. GPS needs HTTPS (the live link) or `localhost`.
 
 ## Demo walkthrough
 
@@ -51,8 +63,9 @@ The app uses JavaScript modules, so open it through a server (as above), not str
 | `js/map.js` | The single Leaflet map, moved between screens and redrawn from a scene |
 | `js/html.js` | `html` template tag that escapes everything interpolated |
 | `js/geo.js` | Distances, walking estimates, point-in-campus test, formatting |
-| `js/routing.js` | Road route requests to OSRM |
-| `js/main.js` | Wiring: renders, routes `data-action` clicks to actions, runs the clock, GPS |
+| `js/location.js` | Live GPS tracking (`watchPosition`), limited to campus |
+| `js/routing.js` | Road route requests to OSRM, and trimming/re-routing as you walk |
+| `js/main.js` | Wiring: renders, routes `data-action` clicks to actions, runs the clock, live location |
 | `sw.js` | Offline cache, network-first so new deploys appear immediately |
 
 Buttons declare what they do with `data-action="reserve" data-arg="DSU-014"`. One click listener in `main.js` calls the matching function in `actions.js`, saves state, and re-renders. Actions receive the current time as an argument, so the tests can drive the whole flow with a fake clock.

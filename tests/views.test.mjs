@@ -90,3 +90,26 @@ test('map scenes: pins, routes and when to refit', () => {
   actions.openScanner(state);
   assert.equal(mapScene(state), null, 'no map on the scan screen');
 });
+
+test('live location shows in the legend, the distance note and the parking screen', () => {
+  const state = createInitialState();
+  assert.match(liveValues(state, T0).where, /Campus Yard \(demo location\)/);
+  actions.setLocation(state, { at: [12.6604, 77.4527], source: 'gps', accuracy: 7.6 });
+  assert.equal(liveValues(state, T0).where, 'Distances from your live location (±8 m).');
+  const home = render(state);
+  assert.match(home, /You \(live\)/);
+  assert.match(home, /data-live="where">Distances from your live location/);
+
+  actions.reserve(state, 'DSU-014', T0);
+  actions.openScanner(state);
+  actions.scanQr(state, undefined, T0);
+  tick(state, T0 + RULES.scanVerifyMs);
+  actions.startRide(state, undefined, T0);
+  actions.openParking(state);
+  assert.deepEqual(mapScene(state).you.source, 'gps', 'parking map shows you when GPS is live');
+  assert.match(render(state), /\d+ m · \d of \d ports free/);
+
+  actions.setLocation(state, { at: [12.661641, 77.450018], source: 'demo' });
+  assert.equal(mapScene(state).you, null, 'but not the demo location');
+  assert.doesNotMatch(render(state), /\d+ m · \d of \d ports free/);
+});

@@ -193,3 +193,26 @@ test('resetDemo restores the original data', () => {
   actions.resetDemo(state);
   assert.deepEqual(state, createInitialState());
 });
+
+test('live location: the choice survives a reload, the position does not', () => {
+  const storage = memoryStorage();
+  const state = createInitialState();
+  actions.setLiveLocation(state, true);
+  actions.setLocation(state, { at: [12.6604, 77.4527], source: 'gps', accuracy: 9 });
+  assert.deepEqual(state.you, { at: [12.6604, 77.4527], source: 'gps', accuracy: 9 });
+  saveState(storage, state);
+  const restored = loadState(storage);
+  assert.equal(restored.liveLocation, true);
+  assert.equal(restored.you.source, 'demo', 'position comes from a fresh GPS fix, not storage');
+});
+
+test('resetDemo keeps your location and live-tracking choice', () => {
+  const state = startRide();
+  actions.setLiveLocation(state, true);
+  actions.setLocation(state, { at: [12.6604, 77.4527], source: 'gps', accuracy: 9 });
+  actions.resetDemo(state);
+  assert.equal(state.liveLocation, true);
+  assert.equal(state.you.source, 'gps');
+  assert.equal(state.ride, null);
+  assert.equal(state.screen, 'home');
+});

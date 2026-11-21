@@ -1,8 +1,10 @@
 // Entry point: owns the state, renders screens, routes UI events to actions, and runs the 1 s clock.
 import { actions, tick } from './actions.js';
 import { CAMPUS_BOUNDARY, DEMO_LOCATION } from './data.js';
-import { distanceMeters, isInside } from './geo.js';
+import { distanceMeters } from './geo.js';
+import { createLocationTracker } from './location.js';
 import { createCampusMap } from './map.js';
+import { selectedScooter } from './selectors.js';
 import { loadState, saveState } from './state.js';
 import { liveValues, mapScene, renderScreen } from './views.js';
 
@@ -20,8 +22,14 @@ const state = loadState(storage);
 const campusMap = createCampusMap({
   boundary: CAMPUS_BOUNDARY,
   onAction: dispatch,
-  onLocate: locate,
+  onLocate: onLocateButton,
   onRouteError: () => showToast("Couldn't load a road route. Check your connection and try again."),
+});
+const tracker = createLocationTracker({
+  geolocation: navigator.geolocation ?? null,
+  boundary: CAMPUS_BOUNDARY,
+  onFix,
+  onStop: stopLiveLocation,
 });
 let renderedScreen = null;
 
@@ -103,31 +111,55 @@ app.addEventListener('input', (event) => {
   if (target) dispatch(target.dataset.input, target.value);
 });
 
-// ---------- location
+// ---------- live location
 
-function locate() {
-  if (!('geolocation' in navigator)) {
-    showToast('Location is not available on this device.');
-    return;
+// Screens that show distances from you. Others (scan, ride, done) keep the position without re-rendering,
+// so e.g. a dragged throttle slider is never rebuilt under your finger.
+const LOCATION_SCREENS = new Set(['home', 'reserved', 'park']);
+const RERENDER_AFTER_M = 10; // distances are shown to the nearest 10 m
+let renderedFrom = null; // the live position the on-screen distances were computed from
+
+function startLiveLocation() {
+  if (!tracker.start()) return;
+  actions.setLiveLocation(state, true);
+  saveState(storage, state);
+  campusMap.setLocateMode('follow');
+}
+
+function stopLiveLocation(message) {
+  tracker.stop();
+  renderedFrom = null;
+  campusMap.setLocateMode('off');
+  actions.setLiveLocation(state, false);
+  actions.setLocation(state, { at: DEMO_LOCATION.at, source: 'demo' });
+  saveState(storage, state);
+  render();
+  if (message) showToast(message);
+}
+
+/** Locate button: off → live and following → (drag the map) live → tap to re-centre → tap again to stop. */
+function onLocateButton() {
+  if (!tracker.active) {
+    showToast('Finding your location…');
+    startLiveLocation();
+  } else if (campusMap.locateMode === 'track') {
+    campusMap.setLocateMode('follow');
+  } else {
+    stopLiveLocation('Live location off. Distances use the demo location.');
   }
-  showToast('Finding your location…');
-  navigator.geolocation.getCurrentPosition(
-    ({ coords }) => {
-      const at = [coords.latitude, coords.longitude];
-      const nearCampus = isInside(at, CAMPUS_BOUNDARY) || CAMPUS_BOUNDARY.some((p) => distanceMeters(p, at) < 150);
-      if (nearCampus) {
-        dispatch('setLocation', { at, source: 'gps' });
-        showToast('Showing distances from your location.');
-      } else {
-        dispatch('setLocation', { at: DEMO_LOCATION.at, source: 'demo' });
-        const km = distanceMeters(at, DEMO_LOCATION.at) / 1000;
-        showToast(`You're about ${km < 10 ? km.toFixed(1) : Math.round(km)} km from campus, so distances use the demo location (${DEMO_LOCATION.label}).`);
-      }
-    },
-    (error) =>
-      showToast(error.code === error.PERMISSION_DENIED ? 'Location permission denied. Using the demo location.' : "Couldn't get your location. Using the demo location."),
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }, // the user tapped because they moved: always a fresh fix
-  );
+}
+
+function onFix(fix, first) {
+  actions.setLocation(state, { at: fix.at, source: 'gps', accuracy: fix.accuracy });
+  // Keep showing the scooter you were looking at as you walk, rather than whichever is nearest this second.
+  if (state.screen === 'home' && !state.selectedId) state.selectedId = selectedScooter(state)?.id ?? null;
+  const movedEnough = !renderedFrom || distanceMeters(renderedFrom, fix.at) >= RERENDER_AFTER_M;
+  if (LOCATION_SCREENS.has(state.screen) && (first || movedEnough)) {
+    renderedFrom = fix.at;
+    render();
+  }
+  campusMap.updateYou(state.you, { recentre: first });
+  if (first) showToast('Live location on. Distances update as you move.');
 }
 
 // ---------- clock
@@ -149,6 +181,21 @@ document.addEventListener('visibilitychange', () => {
 
 onTick(); // settle anything that expired while the app was closed
 render();
+
+if (state.liveLocation) {
+  // Resume live location after a reload, but never pop a permission prompt on page load.
+  const permission = navigator.permissions?.query({ name: 'geolocation' }) ?? Promise.resolve(null);
+  permission
+    .then((status) => {
+      if (status?.state === 'granted') {
+        startLiveLocation();
+      } else {
+        actions.setLiveLocation(state, false);
+        saveState(storage, state);
+      }
+    })
+    .catch(() => {});
+}
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});

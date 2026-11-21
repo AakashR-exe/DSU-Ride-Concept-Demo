@@ -24,6 +24,7 @@ const BROWSERS = [
   '/usr/bin/microsoft-edge',
 ].filter(Boolean);
 
+const CACHE_NAME = fs.readFileSync(new URL('../dsu-ride-demo/sw.js', import.meta.url), 'utf8').match(/const CACHE = '([^']+)'/)[1];
 const shotsDir = process.argv.includes('--screenshots') ? process.argv[process.argv.indexOf('--screenshots') + 1] : null;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const failures = [];
@@ -103,9 +104,26 @@ async function openPage(label, { width, height, mobile }) {
   const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
   const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true });
   const call = (method, params) => send(method, params, sessionId);
+  const routeRequests = [];
   listeners.add((msg) => {
     if (msg.sessionId !== sessionId) return;
     const p = msg.params;
+    if (msg.method === 'Fetch.requestPaused') {
+      // Answer road-route requests here: deterministic, and the test never loads the shared OSRM server.
+      routeRequests.push(p.request.url);
+      const [[lng1, lat1], [lng2, lat2]] = new URL(p.request.url).pathname.split('/').pop().split(';').map((c) => c.split(',').map(Number));
+      const midLat = (lat1 + lat2) / 2;
+      const body = JSON.stringify({ code: 'Ok', routes: [{ geometry: { type: 'LineString', coordinates: [[lng1, lat1], [lng1, midLat], [lng2, midLat], [lng2, lat2]] } }] });
+      call('Fetch.fulfillRequest', {
+        requestId: p.requestId,
+        responseCode: 200,
+        responseHeaders: [
+          { name: 'Content-Type', value: 'application/json' },
+          { name: 'Access-Control-Allow-Origin', value: '*' },
+        ],
+        body: Buffer.from(body).toString('base64'),
+      }).catch(() => {});
+    }
     if (msg.method === 'Runtime.exceptionThrown') failures.push(`[${label}] page error: ${p.exceptionDetails.exception?.description ?? p.exceptionDetails.text}`);
     if (msg.method === 'Runtime.consoleAPICalled' && p.type === 'error') failures.push(`[${label}] console.error: ${p.args.map((a) => a.value ?? a.description).join(' ')}`);
     if (msg.method === 'Network.responseReceived' && p.response.url.startsWith(origin) && p.response.status >= 400) failures.push(`[${label}] HTTP ${p.response.status} ${p.response.url}`);
@@ -114,6 +132,7 @@ async function openPage(label, { width, height, mobile }) {
   await call('Runtime.enable');
   await call('Network.enable');
   await call('Page.enable');
+  await call('Fetch.enable', { patterns: [{ urlPattern: '*router.project-osrm.org*', requestStage: 'Request' }] });
   await call('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: mobile ? 2 : 1, mobile });
   if (mobile) await call('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
 
@@ -125,6 +144,7 @@ async function openPage(label, { width, height, mobile }) {
   const page = {
     call,
     evaluate,
+    routeRequests,
     async goto(url) {
       await call('Page.navigate', { url });
       await page.waitFor(`!!document.querySelector('#app [data-screen-title]')`);
@@ -176,7 +196,8 @@ try {
   await phone.click('[data-action="setTab"][data-arg="charging"]');
   check((await phone.count('.pin.dock')) === 8, 'charging tab shows 8 dock pins');
   await phone.click('.list [data-action="navigate"][data-arg="AR"]');
-  check((await phone.count('.leaflet-overlay-pane path')) === 2, 'navigating draws a walking route');
+  await phone.waitFor(`document.querySelectorAll('.leaflet-overlay-pane path').length >= 3`); // campus outline + route casing + route
+  check(phone.routeRequests.some((u) => u.includes('77.453289,12.659638')), 'navigating draws a road route to the dock');
   check(/DSU Arena/.test(await phone.text('#toast')), 'navigate shows a toast');
   await phone.click('[data-action="setTab"][data-arg="scooters"]');
 
@@ -212,16 +233,64 @@ try {
   await phone.click('[data-action="backToMap"]');
   check((await phone.count('.pin.scooter')) === 7, 'back on the map with all scooters available');
 
-  const allow = { origin, permissions: ['geolocation'] };
-  await send('Browser.grantPermissions', allow);
-  await phone.call('Emulation.setGeolocationOverride', { latitude: 12.6604, longitude: 77.4527, accuracy: 10 });
-  await phone.click('.map-btn[title="Use my location"]');
-  await phone.waitFor(`document.querySelector('.dist-note').textContent.includes('your location')`);
-  check(true, 'GPS on campus is used for distances');
-  await phone.call('Emulation.setGeolocationOverride', { latitude: 12.9716, longitude: 77.5946, accuracy: 10 });
-  await phone.click('.map-btn[title="Use my location"]');
+  // ---------- live GPS tracking
+  await send('Browser.grantPermissions', { origin, permissions: ['geolocation'] });
+  const setGps = (latitude, longitude) => phone.call('Emulation.setGeolocationOverride', { latitude, longitude, accuracy: 8 });
+  const where = () => phone.text('[data-live="where"]');
+  const locateClass = (name) => phone.evaluate(`document.querySelector('.map-btn.locate').classList.contains('${name}')`);
+  const youNearCentre = `(() => {
+    const m = document.querySelector('.map').getBoundingClientRect();
+    const d = document.querySelector('.me-dot').getBoundingClientRect();
+    return Math.hypot(d.x + d.width / 2 - (m.x + m.width / 2), d.y + d.height / 2 - (m.y + m.height / 2)) < 30;
+  })()`;
+
+  await setGps(12.6604, 77.4527); // next to Tummy Trails
+  await phone.click('.map-btn.locate');
+  await phone.waitFor(`document.querySelector('[data-live="where"]').textContent.includes('live location')`);
+  check(true, 'live location replaces the demo location');
+  check((await phone.text('.sheet .row b')) === 'DSU-014', 'nearest scooter is measured from your real position');
+  check(await locateClass('is-follow'), 'locate button shows the map is following you');
+  check(await phone.evaluate(`!!document.querySelector('path.accuracy') && document.querySelector('.me-dot').classList.contains('live')`), 'live dot with a GPS accuracy circle');
+  await phone.waitFor(youNearCentre);
+  check(true, 'map centres on you');
+  await phone.waitFor(`document.querySelectorAll('.leaflet-overlay-pane path').length >= 4`); // + accuracy circle
+  await sleep(300);
+  await phone.shot('phone-live.png');
+
+  const distanceBefore = await phone.text('.sheet .row .sm');
+  const routeRequestsBefore = phone.routeRequests.length;
+  await setGps(12.66055, 77.4527); // walk ~17 m north
+  await phone.waitFor(`document.querySelector('.sheet .row .sm').textContent !== ${JSON.stringify(distanceBefore)}`);
+  check(true, 'distances update as you walk');
+  await phone.waitFor(youNearCentre);
+  check(true, 'the map follows you');
+  check(phone.routeRequests.length === routeRequestsBefore, 'a short walk reuses the route instead of asking the server again');
+
+  const box = await phone.evaluate(`(() => { const r = document.querySelector('.map').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+  await phone.call('Input.dispatchMouseEvent', { type: 'mousePressed', x: box.x, y: box.y, button: 'left', clickCount: 1 });
+  for (let i = 1; i <= 6; i++) await phone.call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: box.x + i * 15, y: box.y + i * 10, button: 'left', buttons: 1 });
+  await phone.call('Input.dispatchMouseEvent', { type: 'mouseReleased', x: box.x + 90, y: box.y + 60, button: 'left', clickCount: 1 });
+  check((await locateClass('is-track')) && !(await locateClass('is-follow')), 'dragging the map stops following (tracking continues)');
+  await phone.click('.map-btn.locate');
+  await phone.waitFor(youNearCentre);
+  check(await locateClass('is-follow'), 'tapping locate re-centres and follows again');
+
+  await phone.click('.map-btn.locate');
+  check(/demo location/.test(await where()) && !(await locateClass('is-follow')), 'tapping again turns live location off');
+  check(/Live location off/.test(await phone.text('#toast')), 'and says so');
+
+  await phone.click('.map-btn.locate');
+  await phone.waitFor(`document.querySelector('[data-live="where"]').textContent.includes('live location')`);
+  await phone.goto(`${origin}/dsu-ride-demo/`);
+  await phone.waitFor(`document.querySelector('[data-live="where"]').textContent.includes('live location')`);
+  check(await locateClass('is-follow'), 'live location resumes after a reload');
+
+  await setGps(12.9716, 77.5946); // walk off to central Bengaluru
+  await phone.waitFor(`/left campus/.test(document.getElementById('toast').textContent)`);
+  check(/demo location/.test(await where()) && !(await locateClass('is-follow')), 'leaving campus turns live location off');
+  await phone.click('.map-btn.locate');
   await phone.waitFor(`/km from campus/.test(document.getElementById('toast').textContent)`);
-  check(/demo location/.test(await phone.text('.dist-note')), 'GPS off campus falls back to the demo location');
+  check(/demo location/.test(await where()), 'starting off campus keeps the demo location');
 
   await phone.click('[data-action="resetDemo"]');
   check(/DSU-022/.test(await phone.text('.sheet .row b')), 'reset restores the original data');
@@ -235,7 +304,7 @@ try {
     console.log('  - installability check not supported by this browser');
   }
   check((await phone.evaluate(`navigator.serviceWorker.ready.then((r) => r.active.state)`)) === 'activated', 'service worker active');
-  await phone.waitFor(`caches.open('dsu-ride-v4').then((c) => c.keys()).then((k) => k.length >= 20)`, 8000);
+  await phone.waitFor(`caches.open('${CACHE_NAME}').then((c) => c.keys()).then((k) => k.length >= 20)`, 8000);
   check(true, 'app shell cached for offline use');
 
   console.log('\nDesktop');

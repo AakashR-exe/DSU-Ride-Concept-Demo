@@ -171,3 +171,15 @@ input[type=range] { width: 100%; accent-color: var(--a); }
   .blink { animation: none; }
   .toast { transition: none; }
 }
+
+/* ---------- live location */
+.map-btn.is-follow { background: var(--blue); border-color: var(--blue); color: #fff; }
+.map-btn.is-follow:hover { background-color: #1f5ae0; }
+.map-btn.is-track { color: var(--blue); }
+.me-dot.live { animation: live-ring 2s ease-out infinite; }
+@keyframes live-ring {
+  0% { box-shadow: 0 0 0 0 #2b6bff66; }
+  70% { box-shadow: 0 0 0 14px #2b6bff00; }
+  100% { box-shadow: 0 0 0 0 #2b6bff00; }
+}
+@media (prefers-reduced-motion: reduce) { .me-dot.live { animation: none; box-shadow: 0 0 0 9px #2b6bff33; } }

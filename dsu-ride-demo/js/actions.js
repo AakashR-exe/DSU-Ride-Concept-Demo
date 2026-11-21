@@ -163,11 +163,16 @@ export const actions = {
   },
 
   setLocation(state, location) {
-    state.you = { at: location.at, source: location.source };
+    state.you = { at: location.at, source: location.source, accuracy: location.accuracy ?? null };
+  },
+
+  setLiveLocation(state, on) {
+    state.liveLocation = Boolean(on);
   },
 
   resetDemo(state) {
-    Object.assign(state, createInitialState());
+    // Scooters, docks and trips go back to the start; your location and live-tracking choice stay.
+    Object.assign(state, createInitialState(), { you: state.you, liveLocation: state.liveLocation });
     return 'Demo data reset.';
   },
 };

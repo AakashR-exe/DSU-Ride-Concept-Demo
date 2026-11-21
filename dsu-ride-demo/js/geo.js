@@ -31,6 +31,29 @@ export function isInside([lat, lng], polygon) {
   return inside;
 }
 
+/** Shortest distance in metres from point p to the segment a–b (flat projection around p; fine at campus scale). */
+export function distanceToSegmentMeters(p, a, b) {
+  const mPerLng = 111320 * Math.cos(p[0] * RAD);
+  const mPerLat = 110574;
+  const x1 = (a[1] - p[1]) * mPerLng;
+  const y1 = (a[0] - p[0]) * mPerLat;
+  const dx = (b[1] - a[1]) * mPerLng;
+  const dy = (b[0] - a[0]) * mPerLat;
+  const lengthSq = dx * dx + dy * dy;
+  const t = lengthSq ? Math.max(0, Math.min(1, -(x1 * dx + y1 * dy) / lengthSq)) : 0;
+  return Math.hypot(x1 + t * dx, y1 + t * dy);
+}
+
+/** Shortest distance in metres from a point to a polygon's edge, or 0 inside it. */
+export function distanceToPolygonMeters(at, polygon) {
+  if (isInside(at, polygon)) return 0;
+  let best = Infinity;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    best = Math.min(best, distanceToSegmentMeters(at, polygon[j], polygon[i]));
+  }
+  return best;
+}
+
 /** Seconds → "mm:ss" (minutes keep counting past 60). */
 export function formatClock(totalSeconds) {
   const s = Math.max(0, Math.floor(totalSeconds));

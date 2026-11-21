@@ -32,7 +32,7 @@ function stepper(done) {
 
 function mapKey(items, you) {
   return html`<div class="map-key">${items.map(([kind, text]) => html`<span><i class="k-${kind}"></i>${text}</span>`)}${
-    you ? html`<span><i class="k-you"></i>${you.source === 'gps' ? 'You (GPS)' : 'You'}</span>` : ''
+    you ? html`<span><i class="k-you"></i>${you.source === 'gps' ? 'You (live)' : 'You'}</span>` : ''
   }</div>`;
 }
 
@@ -44,13 +44,19 @@ function portsPill(dock) {
 const batteryBar = (pct) =>
   html`<div class="bar" role="img" aria-label="Battery ${pct}%"><i style="width:${pct}%"></i></div>`;
 
+/** Where distances are measured from; refreshed every second so GPS accuracy stays current. */
+function distanceSource(state) {
+  const { source, accuracy } = state.you;
+  if (source !== 'gps') return `Distances from ${DEMO_LOCATION.label} (demo location).`;
+  return `Distances from your live location${accuracy ? ` (±${Math.round(accuracy)} m)` : ''}.`;
+}
+
 const countdown = (state, now) => formatClock((state.reservation.expiresAt - now) / 1000);
 
 // ---------- screens
 
 function home(state) {
   const onScooters = state.tab === 'scooters';
-  const gps = state.you.source === 'gps';
   return html`${screenTitle(onScooters ? 'DSU Ride: find a scooter' : 'DSU Ride: charging points')}
 <header class="top">
   <div class="home-heading"><div class="brand"><span class="brandmark" aria-hidden="true">⚡</span>DSU Ride</div><small>Harohalli campus mobility</small></div>
@@ -63,7 +69,7 @@ function home(state) {
 <div class="map-wrap" id="map-slot">${mapKey(onScooters ? [['scooter', 'Scooter · battery %']] : [['dock', 'Free charging ports']], state.you)}</div>
 <section class="sheet" aria-label="${onScooters ? 'Scooters' : 'Charging points'}">
   ${onScooters ? scooterSheet(state) : dockSheet(state)}
-  <p class="note dist-note">Distances from ${gps ? 'your location' : `${DEMO_LOCATION.label} (demo location)`}. Road routes use OSRM and share these coordinates with its public routing service.</p>
+  <p class="note dist-note"><span data-live="where">${distanceSource(state)}</span> Road routes use OSRM and share these coordinates with its public routing service.</p>
   <button type="button" class="lnk subtle" data-action="resetDemo">Reset demo data</button>
 </section>`;
 }
@@ -173,14 +179,15 @@ ${FAULTS.map((f) => html`<button type="button" class="btn ghost" data-action="re
 function park(state) {
   const docks = openDocks(state);
   const chosen = state.parkDockId;
+  const gps = state.you.source === 'gps';
   return html`${screenTitle('Park at a charging point')}
 <header class="top"><div class="title-bar"><b>Park at a charging point</b><small>Pick a dock on the map or in the list</small></div></header>
-<div class="map-wrap" id="map-slot">${mapKey([['dock', 'Free charging ports']], null)}</div>
+<div class="map-wrap" id="map-slot">${mapKey([['dock', 'Free charging ports']], gps ? state.you : null)}</div>
 <section class="sheet">
   ${stepper(3)}
   <ul class="list" aria-label="Charging points with free ports">${docks.map(
     (d) =>
-      html`<li><button type="button" class="row row-btn${d.id === chosen ? ' sel' : ''}" aria-pressed="${d.id === chosen}" data-action="chooseDock" data-arg="${d.id}"><span class="ico am" aria-hidden="true">⚡</span><span class="grow"><b>${d.name}</b><span class="sm">${d.freePorts} of ${d.totalPorts} ports free</span></span></button></li>`,
+      html`<li><button type="button" class="row row-btn${d.id === chosen ? ' sel' : ''}" aria-pressed="${d.id === chosen}" data-action="chooseDock" data-arg="${d.id}"><span class="ico am" aria-hidden="true">⚡</span><span class="grow"><b>${d.name}</b><span class="sm">${gps ? `${formatDistance(d.walkM)} · ` : ''}${d.freePorts} of ${d.totalPorts} ports free</span></span></button></li>`,
   )}</ul>
   <div class="sheet-actions">
     <button type="button" class="btn" data-action="finishRide" ${raw(chosen ? '' : 'disabled')}>Lock &amp; snap photo to end trip</button>
@@ -212,7 +219,7 @@ export function renderScreen(state, now) {
 // ---------- live values (updated every second without re-rendering)
 
 export function liveValues(state, now) {
-  const out = {};
+  const out = { where: distanceSource(state) };
   if (state.reservation) out.countdown = countdown(state, now);
   const r = state.ride;
   if (r) {
@@ -292,7 +299,8 @@ export function mapScene(state) {
       };
     }
     case 'park':
-      return { fitKey: 'park', you: null, route: null, pins: state.docks.map((d) => dockPin(d, d.id === state.parkDockId, 'chooseDock')) };
+      // While parking, your position only matters when it's real (live GPS).
+      return { fitKey: 'park', you: you.source === 'gps' ? you : null, route: null, pins: state.docks.map((d) => dockPin(d, d.id === state.parkDockId, 'chooseDock')) };
     default:
       return null;
   }

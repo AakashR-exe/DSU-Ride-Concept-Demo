@@ -11,7 +11,8 @@ export function createInitialState() {
     query: '',
     selectedId: null,
     navDockId: null,
-    you: { at: DEMO_LOCATION.at, source: 'demo' }, // source: demo | gps
+    you: { at: DEMO_LOCATION.at, source: 'demo', accuracy: null }, // source: demo | gps (accuracy in metres)
+    liveLocation: false, // the user turned on live GPS tracking (resumed after a reload)
     scooters: structuredClone(SCOOTERS),
     docks: structuredClone(DOCKS),
     reservation: null, // { scooterId, expiresAt }
@@ -22,12 +23,13 @@ export function createInitialState() {
   };
 }
 
-/** Only the parts worth keeping across a reload; search text and location start fresh. */
+/** Only the parts worth keeping across a reload; search text and the position itself start fresh. */
 function serialize(state) {
   return JSON.stringify({
     version: VERSION,
     screen: state.screen,
     tab: state.tab,
+    liveLocation: state.liveLocation,
     selectedId: state.selectedId,
     scooters: state.scooters,
     dockPorts: Object.fromEntries(state.docks.map((d) => [d.id, d.freePorts])),
@@ -53,6 +55,7 @@ function hydrate(saved) {
     if (Number.isInteger(free) && free >= 0 && free <= dock.totalPorts) dock.freePorts = free;
   }
   state.tab = saved.tab === 'charging' ? 'charging' : 'scooters';
+  state.liveLocation = saved.liveLocation === true;
   state.selectedId = saved.selectedId ?? null;
   state.reservation = saved.reservation ?? null;
   state.scan = saved.scan ?? null;
