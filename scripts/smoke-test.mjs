@@ -42,8 +42,28 @@ const server = await startServer({ port: 0 });
 const origin = `http://127.0.0.1:${server.address().port}`;
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'dsu-ride-smoke-'));
 const flags = ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--remote-debugging-port=0', `--user-data-dir=${profile}`];
-if (process.platform === 'linux') flags.push('--no-sandbox'); // CI containers
-const browser = spawn(browserPath, [...flags, 'about:blank'], { stdio: 'ignore' });
+if (process.platform === 'linux') flags.push('--no-sandbox', '--disable-dev-shm-usage'); // CI machines
+const browser = spawn(browserPath, [...flags, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+
+// Chrome prints "DevTools listening on ws://..." to stderr once it's ready; keep the log for error reports.
+let browserLog = '';
+let browserExit = null;
+const browserReady = new Promise((resolve) => {
+  browser.stderr.setEncoding('utf8');
+  browser.stderr.on('data', (chunk) => {
+    browserLog += chunk;
+    const match = browserLog.match(/DevTools listening on (ws:\/\/\S+)/);
+    if (match) resolve(match[1]);
+  });
+  browser.on('error', (error) => {
+    browserExit = error.message;
+    resolve(null);
+  });
+  browser.on('exit', (code, signal) => {
+    browserExit = code ?? signal;
+    resolve(null);
+  });
+});
 
 // ---------- minimal DevTools protocol client
 let ws;
@@ -58,10 +78,12 @@ const send = (method, params = {}, sessionId) =>
   });
 
 async function connect() {
-  const portFile = path.join(profile, 'DevToolsActivePort');
-  for (let i = 0; i < 100 && !fs.existsSync(portFile); i++) await sleep(100);
-  const [port, wsPath] = fs.readFileSync(portFile, 'utf8').trim().split('\n');
-  ws = new WebSocket(`ws://127.0.0.1:${port}${wsPath}`);
+  const url = await Promise.race([browserReady, sleep(30000).then(() => null)]);
+  if (!url) {
+    const why = browserExit != null ? `exited with ${browserExit}` : 'did not start within 30 s';
+    throw new Error(`Browser ${why}. Last output:\n${browserLog.trim().split('\n').slice(-12).join('\n')}`);
+  }
+  ws = new WebSocket(url);
   await new Promise((resolve, reject) => {
     ws.addEventListener('open', resolve, { once: true });
     ws.addEventListener('error', reject, { once: true });
