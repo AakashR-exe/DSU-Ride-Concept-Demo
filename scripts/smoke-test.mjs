@@ -242,6 +242,11 @@ try {
 
 if (failures.length) {
   console.error(`\n${failures.length} problem(s):\n${failures.map((f) => `  - ${f}`).join('\n')}`);
+  if (process.env.GITHUB_ACTIONS === 'true') {
+    // Surface each failure as an annotation on the run / pull request.
+    const escape = (s) => s.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+    for (const f of failures) console.log(`::error title=Smoke test::${escape(f)}`);
+  }
   process.exit(1);
 }
 console.log('\nSmoke test passed.');
