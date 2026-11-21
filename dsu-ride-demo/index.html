@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#123d2f">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="icon.svg">
+<title>DSU Ride – Concept Demo</title>
+<style>
+:root{--g:#123d2f;--g2:#0f6b4a;--a:#e8a62a;--c:#f1f6f1;--ink:#1d2b26;--mute:#6b7a73;--r:#c0504a;--p:#ecc9bc}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:"Segoe UI",Roboto,system-ui,sans-serif;background:#0b2a20;color:var(--ink);display:flex;justify-content:center}
+#app{width:100%;max-width:430px;height:100%;background:var(--c);position:relative;overflow:hidden;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+@media(min-width:600px){#app{height:min(900px,96vh);margin:auto;border-radius:28px}}
+.top{padding:12px 14px 8px;display:flex;gap:8px;flex-direction:column}
+.search{background:#fff;border-radius:12px;padding:12px 14px;font-size:14px;color:var(--mute);box-shadow:0 1px 4px #0002}
+.tabs{display:inline-flex;background:#fff;border-radius:20px;padding:3px;align-self:flex-start;box-shadow:0 1px 4px #0002}
+.tabs button{border:0;background:none;padding:7px 16px;border-radius:17px;font-size:13px;color:var(--ink)}
+.tabs .on{background:var(--g2);color:#fff}
+.map{width:100%;flex:1;min-height:0;display:block}
+.ban{background:var(--g2);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;font-weight:600}
+.sheet{background:#fff;border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -4px 16px #0002;max-height:55%;overflow:auto}
+.lbl{font-size:12px;color:var(--g2);font-weight:700;margin-bottom:6px}
+.row{display:flex;gap:12px;align-items:center;padding:8px 0}
+.ico{width:42px;height:42px;border-radius:10px;background:var(--g2);color:#fff;display:grid;place-items:center;font-size:20px;flex:none}
+.ico.am{background:var(--a)}
+.row b{display:block;font-size:17px}.row small,.sm{font-size:12.5px;color:var(--mute)}
+.grow{flex:1}
+.bar{height:6px;background:#dfe8e2;border-radius:3px;margin:4px 0 12px;overflow:hidden}.bar i{display:block;height:100%;background:var(--g2)}
+.btn{width:100%;border:0;background:var(--g2);color:#fff;font-size:16px;font-weight:700;padding:16px;border-radius:14px;margin-top:6px}
+.btn.am{background:var(--a);color:#1d1400}.btn:disabled{opacity:.4}
+.lnk{display:block;text-align:center;margin-top:12px;font-size:13px;color:var(--g2);background:none;border:0;width:100%}
+.pill{font-size:12px;padding:4px 9px;border-radius:10px;background:#dff0e5;color:#0f6b4a;font-weight:600;white-space:nowrap}
+.pill.f{background:#f2dcd9;color:var(--r)}.pill.l{background:#fbeccb;color:#8a5d00}
+.sel{outline:2px solid var(--g2);border-radius:12px}
+.steps{display:flex;justify-content:space-between;margin:10px 0 4px}
+.steps div{flex:1;text-align:center;font-size:11px;color:var(--mute)}
+.steps span{display:grid;place-items:center;width:24px;height:24px;margin:0 auto 3px;border-radius:50%;background:#e4ebe6;font-weight:700}
+.steps .d span{background:var(--g2);color:#fff}.steps .d{color:var(--ink)}
+.dark{background:#171f1c;color:#fff}
+.full{flex:1;display:flex;flex-direction:column;overflow:auto}
+.qrbox{margin:28px auto 14px;background:#fff;padding:14px;border-radius:12px;width:210px;position:relative}
+.qrbox:before,.qrbox:after{content:"";position:absolute;width:36px;height:36px;border:4px solid var(--a)}
+.qrbox:before{left:-12px;top:-12px;border-right:0;border-bottom:0}.qrbox:after{right:-12px;bottom:-12px;border-left:0;border-top:0}
+.chk{padding:8px 0;font-size:15px;display:flex;gap:10px}
+.speed{text-align:center;padding:26px 0 6px}
+.speed b{font-size:96px;line-height:1;font-weight:300;font-family:Georgia,serif}
+.cap{display:inline-block;padding:5px 12px;border-radius:12px;background:var(--a);color:#1d1400;font-size:13px;font-weight:700}
+.zones{display:flex;gap:8px;padding:0 14px}
+.zones button{flex:1;border:1.5px solid #fff4;background:none;color:#fff;border-radius:12px;padding:10px 4px;font-size:12.5px}
+.zones .on{background:#fff;color:var(--g)}
+.stats{display:flex;justify-content:space-around;padding:20px 0;text-align:center}
+.stats b{display:block;font-size:22px}.stats small{color:#fffa}
+input[type=range]{width:100%;accent-color:var(--a)}
+.toast{position:absolute;left:14px;right:14px;top:calc(12px + env(safe-area-inset-top));background:#171f1c;color:#fff;padding:12px 14px;border-radius:12px;font-size:14px;z-index:9;box-shadow:0 4px 14px #0005}
+.done{padding:40px 22px;text-align:center}.done h1{font-family:Georgia,serif;font-weight:400;font-size:30px;margin:10px 0 18px;color:var(--g)}
+.done .stats{background:#fff;border-radius:14px;margin-bottom:16px;color:var(--ink)}.done .stats small{color:var(--mute)}
+.note{font-size:11.5px;color:var(--mute);text-align:center;padding:6px 10px}
+@keyframes pulse{50%{opacity:.35}}.blink{animation:pulse .5s 4}
+@media(prefers-reduced-motion:reduce){.blink{animation:none}}
+</style></head><body><div id="app"></div>
+<script>
+const $=s=>document.querySelector(s);
+const ME={x:180,y:200};
+// Charging points double as scooter bays (sample values from the proposal)
+const CP=[
+ {id:'P',n:'P Block',bx:20,by:20,bw:120,bh:75,f:3,t:4,s:'Open · Fast charge'},
+ {id:'F',n:'F Block',bx:220,by:20,bw:120,bh:75,f:1,t:2,s:'Limited bay'},
+ {id:'HC',n:'Hostel Canteen',bx:20,by:135,bw:120,bh:55,f:4,t:4,s:'Open'},
+ {id:'R',n:'Residency',bx:220,by:135,bw:120,bh:55,f:2,t:4,s:'Open'},
+ {id:'H',n:'Hostel',bx:20,by:200,bw:120,bh:70,f:0,t:4,s:'Full · next free ~18 min'},
+ {id:'S',n:'Security office',bx:220,by:200,bw:120,bh:60,f:2,t:2,s:'Open · nearest office'}
+].map(c=>({...c,x:c.bx+c.bw/2,y:c.by+c.bh/2-8}));
+let SC=[{id:'DSU-014',b:92,at:'HC',st:'ok'},{id:'DSU-022',b:64,at:'P',st:'ok'},{id:'DSU-031',b:71,at:'F',st:'ok'},{id:'DSU-007',b:86,at:'R',st:'ok'},{id:'DSU-019',b:58,at:'S',st:'ok'}];
+const ZONES=[{n:'Main drive',cap:15},{n:'Pedestrian gate',cap:8},{n:'Courtyard / dining',cap:0}];
+const S={tab:'s',sel:null,ph:'home',left:600,scan:0,thr:12,zone:0,t:0,d:0,sid:null,park:null,fm:0,toast:''};
+const cp=id=>CP.find(c=>c.id==id), sc=id=>SC.find(s=>s.id==id);
+const dist=p=>Math.round(Math.hypot(p.x-ME.x,p.y-ME.y)*1.15), walk=m=>Math.max(1,Math.ceil(m/80));
+const avail=()=>SC.filter(s=>s.st=='ok'&&s.b>=20).map(s=>({...s,m:dist(cp(s.at))})).sort((a,b)=>a.m-b.m);
+const mmss=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');
+function toast(m){S.toast=m;render();clearTimeout(toast.t);toast.t=setTimeout(()=>{S.toast='';render()},2400)}
+
+function map(mode,target){
+ let h='<svg viewBox="0 0 360 300" class="map" preserveAspectRatio="xMidYMid slice"><rect width="360" height="300" fill="#dfe9df"/><rect x="140" width="80" height="300" fill="#fff" opacity=".75"/><rect y="95" width="360" height="40" fill="#fff" opacity=".75"/>';
+ CP.forEach(c=>h+=`<rect x="${c.bx}" y="${c.by}" width="${c.bw}" height="${c.bh}" rx="8" fill="#f4f7f2"/><text x="${c.bx+c.bw/2}" y="${c.by+c.bh-8}" text-anchor="middle" font-size="11" fill="#667">${c.n}</text>`);
+ if(target){const t=cp(target),p=t.y>115?[[ME.x,ME.y],[180,t.y],[t.x,t.y]]:[[ME.x,ME.y],[180,115],[t.x,115],[t.x,t.y]];
+  h+=`<polyline points="${p.map(q=>q.join(',')).join(' ')}" fill="none" stroke="#2b6bff" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/>`}
+ if(mode=='s')avail().forEach(s=>{const c=cp(s.at),on=s.id==S.sel;h+=`<g onclick="pick('${s.id}')" style="cursor:pointer"><circle cx="${c.x}" cy="${c.y}" r="${on?17:14}" fill="#0f6b4a" stroke="${on?'#e8a62a':'#fff'}" stroke-width="3"/><text x="${c.x}" y="${c.y+4}" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">${s.b}%</text></g>`});
+ if(mode=='c')CP.forEach(c=>h+=`<g onclick="toast('${c.n}: ${c.f} of ${c.t} ports free')"><circle cx="${c.x}" cy="${c.y}" r="15" fill="#e8a62a" stroke="#fff" stroke-width="3"/><text x="${c.x}" y="${c.y+4}" text-anchor="middle" font-size="11" font-weight="700" fill="#1d1400">${c.f}</text></g>`);
+ if(mode=='r'&&target){const c=cp(target);h+=`<g id="mk"><circle cx="${c.x}" cy="${c.y}" r="16" fill="#0f6b4a" stroke="#fff" stroke-width="3"/><text x="${c.x}" y="${c.y+4}" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">${sc(S.sid).b}%</text></g>`}
+ return h+`<circle cx="${ME.x}" cy="${ME.y}" r="14" fill="#2b6bff" opacity=".2"/><circle cx="${ME.x}" cy="${ME.y}" r="6" fill="#2b6bff" stroke="#fff" stroke-width="2.5"/></svg>`}
+
+function stepper(n){return`<div class="steps">${['Reserved','Scan QR','Ride','Park & lock'].map((x,i)=>`<div class="${i<n?'d':''}"><span>${i<n?'✓':i+1}</span>${x}</div>`).join('')}</div>`}
+
+function home(){
+ const A=avail(); if(!S.sel||!A.find(a=>a.id==S.sel))S.sel=A[0]&&A[0].id;
+ const cur=A.find(a=>a.id==S.sel);
+ let sheet='';
+ if(S.tab=='s'){
+  sheet=cur?`<div class="lbl">${cur.id==A[0].id?'Nearest scooter':'Selected scooter'}</div>
+  <div class="row"><div class="ico">⚡</div><div class="grow"><b>${cur.id}</b><span class="sm">${cur.b}% · ${cur.m} m · ${walk(cur.m)} min walk · ${cp(cur.at).n}</span></div></div>
+  <div class="bar"><i style="width:${cur.b}%"></i></div>
+  <button class="btn" onclick="reserve('${cur.id}')">Reserve for 10 min</button>
+  <div class="note">${A.length} scooters near you · free hold, cancel any time</div>
+  ${A.filter(a=>a.id!=cur.id).slice(0,3).map(a=>`<div class="row" onclick="pick('${a.id}')"><div class="grow"><b style="font-size:15px">${a.id}</b><span class="sm">${cp(a.at).n} · ${a.m} m · ${walk(a.m)} min</span></div><span class="pill">${a.b}%</span></div>`).join('')}`
+  :`<div class="lbl">No scooters free</div><p class="sm">Every scooter is out or charging. Check the Charging tab for the next free dock.</p>`;
+ }else{
+  const N=CP.filter(c=>c.f>0).map(c=>({...c,m:dist(c)})).sort((a,b)=>a.m-b.m)[0];
+  sheet=`<div class="lbl">Charging points nearby</div>`+CP.map(c=>({...c,m:dist(c)})).sort((a,b)=>a.m-b.m).map(c=>`<div class="row"><div class="ico am">⚡</div><div class="grow"><b style="font-size:15px">${c.n}</b><span class="sm">${c.m} m · ${c.s}</span></div><span class="pill ${c.f==0?'f':c.f==1?'l':''}">${c.f==0?'Full':c.f+' free'}</span></div>`).join('')+`<button class="btn am" onclick="toast('Navigating to ${N.n} (demo)')">Navigate to ${N.n}</button>`}
+ return`<div class="top"><div class="search">⚡ Where to on campus?</div><div class="tabs"><button class="${S.tab=='s'?'on':''}" onclick="S.tab='s';render()">Scooters</button><button class="${S.tab=='c'?'on':''}" onclick="S.tab='c';render()">Charging</button></div></div>
+ ${map(S.tab,null)}<div class="sheet">${sheet}</div>`}
+
+function res(){const s=sc(S.sid),c=cp(s.at),m=dist(c);
+ return`<div class="ban"><span>⚡ ${s.id} reserved</span><span id="tm">${mmss(S.left)}</span></div>${map('r',s.at)}
+ <div class="sheet"><div class="row"><div class="grow"><b>${s.id}</b><span class="sm">${Math.round(s.b)}% · ${c.n} rack</span></div><span class="pill">Walk ${walk(m)} min</span></div>
+ ${stepper(1)}<button class="btn" onclick="S.ph='scan';S.scan=0;render()">Scan QR to unlock</button>
+ <button class="lnk" onclick="chirp()">🔊 Chirp &amp; flash light to find it</button>
+ <button class="lnk" onclick="S.left=Math.min(S.left,12);render()">⏩ Demo: skip to end of hold</button>
+ <button class="lnk" style="color:var(--r)" onclick="cancel()">Cancel reservation</button></div>`}
+
+function qr(seed){let h=7;for(const ch of seed)h=(h*31+ch.charCodeAt(0))>>>0;let o='';for(let y=0;y<17;y++)for(let x=0;x<17;x++){const f=(x<6&&y<6)||(x>10&&y<6)||(x<6&&y>10);h=(h*1103515245+12345)>>>0;if(!f&&(h>>>16)%2)o+=`<rect x="${x*8}" y="${y*8}" width="8" height="8"/>`}
+ const fd=(x,y)=>`<rect x="${x+2}" y="${y+2}" width="44" height="44" fill="none" stroke="#171f1c" stroke-width="8"/><rect x="${x+16}" y="${y+16}" width="16" height="16"/>`;
+ return`<svg viewBox="0 0 136 136" width="100%" fill="#171f1c">${o}${fd(0,0)}${fd(88,0)}${fd(0,88)}</svg>`}
+
+function scan(){const s=sc(S.sid);
+ return`<div class="full dark"><div class="ban"><span>Scan the handlebar QR</span><span id="tm">${mmss(S.left)}</span></div>
+ <div class="qrbox">${qr(s.id)}</div><p class="sm" style="text-align:center;color:#fffa">${S.scan==0?'Point the camera at the code on the handlebar stem':''}</p>
+ <div style="flex:1"></div><div class="sheet" style="color:var(--ink)">
+ ${S.scan>=1?`<div class="chk"><span>✅</span><div><b>${s.id} matched</b><br><span class="sm">Reservation confirmed</span></div></div>`:''}
+ ${S.scan>=2?`<div class="chk"><span>✅</span><div><b>Wallet verified</b><br><span class="sm">Campus ID linked · ₹50 deposit held · rider insurance active (sample)</span></div></div>`:''}
+ ${S.scan==0?`<button class="btn" onclick="doScan()">Simulate scan</button>`:S.scan==1?`<button class="btn" disabled>Verifying wallet…</button>`:`<button class="btn" onclick="start()">Unlock &amp; start ride</button>`}
+ <button class="lnk" onclick="S.ph='res';render()">Back</button></div></div>`}
+
+function ride(){const z=ZONES[S.zone];
+ return`<div class="full dark"><div class="ban"><span>Riding ${S.sid}</span><span id="rb">${Math.round(sc(S.sid).b)}% 🔋</span></div>
+ <div class="speed"><b id="sp">0</b><div class="sm" style="color:#fffa">km/h</div><div style="margin-top:10px"><span class="cap" id="cap"></span></div></div>
+ <div class="zones">${ZONES.map((x,i)=>`<button class="${i==S.zone?'on':''}" onclick="S.zone=${i};render()">${x.n}</button>`).join('')}</div>
+ <p class="note" style="color:#fffb;padding:10px 20px" id="msg"></p>
+ <div style="padding:0 20px"><div class="sm" style="color:#fffa">Throttle (simulated)</div><input type="range" min="0" max="25" value="${S.thr}" oninput="S.thr=+this.value;upd()"></div>
+ <div class="stats"><div><b id="tt">${mmss(S.t)}</b><small>time</small></div><div><b id="dd">${Math.round(S.d)} m</b><small>distance</small></div></div>
+ <div style="flex:1"></div><div class="sheet" style="color:var(--ink)">
+ ${S.fm?`<div class="lbl">Report a fault</div>${['Brake wear','Loose handlebar','Flat tire'].map(f=>`<button class="btn" style="background:#eef2ee;color:var(--ink)" onclick="fault('${f}')">${f}</button>`).join('')}<button class="lnk" onclick="S.fm=0;render()">Cancel</button>`
+ :`<button class="btn am" onclick="S.ph='park';S.park=null;render()">Park &amp; lock</button><button class="lnk" onclick="S.fm=1;render()">⚠ Report a fault</button>`}</div></div>`}
+
+function park(){const open=CP.filter(c=>c.f>0).map(c=>({...c,m:dist(c)})).sort((a,b)=>a.m-b.m);
+ return`<div class="top"><div class="search"><b>Park at a charging point</b></div></div><div class="full"><div style="padding:0 14px">
+ ${open.map(c=>`<div class="row ${S.park==c.id?'sel':''}" style="padding:12px" onclick="S.park='${c.id}';render()"><div class="ico am">⚡</div><div class="grow"><b style="font-size:15px">${c.n}</b><span class="sm">${c.f} of ${c.t} ports free</span></div></div>`).join('')}</div></div>
+ <div class="sheet">${stepper(3)}<button class="btn" ${S.park?'':'disabled'} onclick="finish()">Lock &amp; snap photo to end trip</button><button class="lnk" onclick="S.ph='ride';render()">Back to ride</button></div>`}
+
+function doneScr(){const avg=S.t?(S.d/S.t*3.6):0;
+ return`<div class="full done"><div style="font-size:54px">✅</div><h1>Trip complete</h1>
+ <div class="stats"><div><b>${mmss(S.t)}</b><small>time</small></div><div><b>${Math.round(S.d)} m</b><small>distance</small></div><div><b>${avg.toFixed(1)}</b><small>avg km/h</small></div></div>
+ <p class="sm" style="margin-bottom:6px">Parked at ${cp(S.park).n}. Photo saved, ₹50 deposit released.</p><p class="sm">${sc(S.sid).id} is now visible to the next student.</p>
+ <button class="btn" style="margin-top:24px" onclick="S.ph='home';S.sel=null;render()">Back to map</button></div>`}
+
+function render(){
+ const v={home,res,scan,ride,park,done:doneScr}[S.ph]();
+ $('#app').innerHTML=(S.toast?`<div class="toast">${S.toast}</div>`:'')+v;
+ if(S.ph=='ride')upd();
+}
+function upd(){const z=ZONES[S.zone],sp=Math.min(S.thr,z.cap);
+ $('#sp').textContent=sp;$('#cap').textContent=z.cap?`Speed cap ${z.cap} km/h`:'Restricted zone';
+ $('#msg').textContent=z.cap==0?'Motor power cut in courtyards, dining halls and indoor sports areas. Walk the scooter.':S.thr>z.cap?`Geofence limits you to ${z.cap} km/h here.`:'Helmet on, eyes up. Slow down at gates.'}
+function pick(id){S.sel=id;render()}
+function reserve(id){const s=sc(id);s.st='res';S.sid=id;S.ph='res';S.left=600;render()}
+function cancel(){sc(S.sid).st='ok';S.ph='home';S.sel=S.sid;render()}
+function chirp(){toast('🔊 Chirp! Beacon light is blinking on '+S.sid);const m=$('#mk');if(m)m.classList.add('blink')}
+function doScan(){S.scan=1;render();setTimeout(()=>{if(S.ph=='scan'){S.scan=2;render()}},1100)}
+function start(){const s=sc(S.sid),c=cp(s.at);s.st='ride';c.f=Math.min(c.t,c.f+1);S.ph='ride';S.t=0;S.d=0;S.zone=0;S.thr=12;S.fm=0;render();toast('🪖 Wear your helmet. Ride safe.')}
+function fault(f){const s=sc(S.sid);s.st='fault';S.ph='home';S.fm=0;S.sel=null;render();toast(f+' reported. Scooter locked for technician triage.')}
+function finish(){const s=sc(S.sid),c=cp(S.park);s.at=S.park;s.st='ok';s.b=Math.round(s.b);c.f--;S.ph='done';render();toast('📷 Photo captured. Trip closed.')}
+setInterval(()=>{
+ if(S.ph=='res'||S.ph=='scan'){S.left--;const e=$('#tm');if(e)e.textContent=mmss(Math.max(S.left,0));
+  if(S.left<=0){sc(S.sid).st='ok';S.ph='home';S.sel=S.sid;render();toast('Reservation expired. Scooter released for others.')}}
+ if(S.ph=='ride'){const sp=Math.min(S.thr,ZONES[S.zone].cap),s=sc(S.sid);S.t++;S.d+=sp/3.6;s.b=Math.max(5,s.b-(0.01+0.004*sp));
+  $('#tt').textContent=mmss(S.t);$('#dd').textContent=Math.round(S.d)+' m';$('#rb').textContent=Math.round(s.b)+'% 🔋'}
+},1000);
+render();
+if("serviceWorker" in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script></body></html>
