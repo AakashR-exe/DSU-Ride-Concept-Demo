@@ -28,7 +28,9 @@ Then open http://localhost:8000/. Opening `index.html` straight from disk also w
 
 ## Deploy with GitHub Pages
 
-The repository root holds an `index.html` that redirects to this folder, plus a `.nojekyll` file. One-time setup: in the repository **Settings → Pages**, set **Source** to **Deploy from a branch**, choose `main` and `/ (root)`, and save. Every push to `main` then redeploys within a minute or two.
+The repository root holds an `index.html` that redirects to this folder. `.github/workflows/pages.yml` publishes the site on every push to `main`. One-time setup: in the repository **Settings → Pages**, set **Source** to **GitHub Actions**. Each push then redeploys within a minute or two. You can watch progress in the **Actions** tab or rerun it with **Run workflow**.
+
+(Alternatively, set **Source** to **Deploy from a branch**, then choose `main` and `/ (root)`. The `.nojekyll` file keeps that mode serving the files as-is.)
 
 ## Project files
 
