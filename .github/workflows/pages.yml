@@ -1,24 +1,38 @@
-# Publishes the repository to GitHub Pages on every push to main.
-# Site layout: / redirects to /dsu-ride-demo/ (the app).
-name: Deploy to GitHub Pages
+# Runs the unit and browser smoke tests on every push and pull request.
+# Pushes to main that pass are published to GitHub Pages (/ redirects to /dsu-ride-demo/).
+name: Test and deploy
 
 on:
   push:
-    branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
 
 jobs:
-  deploy:
+  test:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Unit tests
+        run: npm test
+      - name: Browser smoke test (headless Chrome)
+        run: npm run test:smoke
+
+  deploy:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
